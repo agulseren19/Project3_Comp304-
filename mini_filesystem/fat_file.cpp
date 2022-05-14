@@ -1,6 +1,13 @@
 #include "fat.h"
 #include "fat_file.h"
-
+#include "stdio.h"
+#include <cassert>
+#include "string.h"
+#include <cstdarg>
+#include <cstring>
+#include <cstdio>
+#include <cstring>
+#include <cstdio>
 // Little helper to show debug messages. Set 1 to 0 to silence.
 #define DEBUG 1
 inline void debug(const char * fmt, ...) {

@@ -1,12 +1,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
-
+#include <fstream>
 #include <list>
-
+#include <iostream>
 #include "fat.h"
 #include "fat_file.h"
-
+#include <cassert>
+#include <unistd.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 /**
  * Write inside one block in the filesystem.
@@ -113,6 +116,19 @@ FAT_FILESYSTEM * mini_fat_create(const char * filename, const int block_size, co
 	FAT_FILESYSTEM * fat = mini_fat_create_internal(filename, block_size, block_count);
 
 	// TODO: create the corresponding virtual disk file with appropriate size.
+	//FILE * fat_fd = fopen(filename, "w+");
+	int fat_fd=open(filename,O_RDWR|O_CREAT,0777);
+	//if (fat_fd == NULL) {
+	if(fat_fd<0){
+		perror("Cannot create virtual disk file");
+		exit(-1);
+	}
+	if (ftruncate(fat_fd,block_size*block_count) < 0) {
+		perror("Cannot size virtual disk file");
+		printf("size cannot");
+		exit(-1);
+	}
+	close(fat_fd);
 	return fat;
 }
 
@@ -132,7 +148,10 @@ bool mini_fat_save(const FAT_FILESYSTEM *fat) {
 		return false;
 	}
 	// TODO: save all metadata (filesystem metadata, file metadata).
-
+	//fprintf(fat_fd,fat->block_count);
+	//fat->block_size
+	//fat->block_map
+	fprintf(fat_fd,"here");
 	return true;
 }
 
@@ -148,4 +167,4 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
 	FAT_FILESYSTEM * fat = mini_fat_create_internal(filename, block_size, block_count);
 
 	return fat;
-}
+}	

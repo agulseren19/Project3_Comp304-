@@ -1,6 +1,12 @@
 #include "fat.h"
 #include "fat_file.h"
-
+#include <cassert>
+#include "string.h"
+#include <cstdarg>
+#include <cstring>
+#include <cstdio>
+#include <cstring>
+#include <cstdio>
 const char * fox = "The quick brown fox jumps over the lazy dog.\n";
 
 int total_score = 0;
