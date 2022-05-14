@@ -33,6 +33,7 @@ int mini_fat_find_empty_block(const FAT_FILESYSTEM *fat);
 int mini_fat_allocate_new_block(FAT_FILESYSTEM *fs, const unsigned char block_type);
 int mini_fat_write_in_block(FAT_FILESYSTEM *fs, const int block_id, const int block_offset, const int size, const void * buffer);
 int mini_fat_read_in_block(FAT_FILESYSTEM *fs, const int block_id, const int block_offset, const int size, void * buffer);
+int mini_fat_helper_write_in_block(const FAT_FILESYSTEM *fs, const int block_id, const int block_offset, const int size, const void * buffer);
 
 
 #endif //FAT_H

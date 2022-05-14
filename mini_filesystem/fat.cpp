@@ -199,7 +199,18 @@ bool mini_fat_save(const FAT_FILESYSTEM *fat) {
 	//fprintf(fat_fd,fat->block_count);
 	//fat->block_size
 	//fat->block_map
-	fprintf(fat_fd,"here");
+	//->files[i] ->files[i]->metadata_block_id
+	mini_fat_helper_write_in_block(fat,0,0,fat->block_size,&fat->block_count);
+	mini_fat_helper_write_in_block(fat,0,4,fat->block_size,&fat->block_size);
+		for (int i=0; i<fat->block_map.size(); ++i) {
+	mini_fat_helper_write_in_block(fat,0,8+i*4,fat->block_size,&fat->block_map[i]);
+	}
+	for (int i=0; i<fat->files.size(); ++i) {
+	mini_fat_helper_write_in_block(fat,fat->files[i]->metadata_block_id,0,fat->block_size,fat->files[i]);
+	}
+	perror("SAVEE");
+//	int mini_fat_write_in_block(FAT_FILESYSTEM *fs, const int block_id, const int block_offset, const int size, const void * buffer) {
+	//fprintf(fat_fd,"here");
 	return true;
 }
 
@@ -216,3 +227,33 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
 
 	return fat;
 }	
+
+int mini_fat_helper_write_in_block(const FAT_FILESYSTEM *fs, const int block_id, const int block_offset, const int size, const void * buffer) {
+	assert(block_offset >= 0);
+	assert(block_offset < fs->block_size);
+	assert(size + block_offset <= fs->block_size);
+	int written = 0;
+	// TODO: write in the real file.
+	if(size>fs->block_size||size+block_offset>fs->block_size){
+	return written;
+	}
+	int fat_fd=open(fs->filename,O_RDWR,0777);
+	if(fat_fd<0){
+		perror("Cannot create virtual disk file");
+		exit(-1);
+	}
+	if (lseek(fat_fd,fs->block_size*block_id+block_offset,SEEK_SET) < 0) {
+		perror("error in lseek");
+		exit(-1);
+	}
+	if (write(fat_fd,buffer,size) < 0) {
+		perror("error in write");
+		exit(-1);
+	}
+	else{
+	written+=size;
+	}
+	
+	close(fat_fd);
+	return written;
+}

@@ -206,7 +206,20 @@ int mini_file_write(FAT_FILESYSTEM *fs, FAT_OPEN_FILE * open_file, const int siz
 	int written_bytes = 0;
 
 	// TODO: write to file.
-
+	int fd=open(open_file->file->name,O_RDWR|O_CREAT,0777);
+	//open_file->file
+	//openfile->position
+	//fprintf(fd,buffer);
+		if (lseek(fd,open_file->position,SEEK_SET) < 0) {
+		perror("error in lseek");
+		exit(-1);
+	}
+		if (write(fd,buffer,size) < 0) {
+		perror("error in write");
+		exit(-1);
+	}
+	written_bytes+=size/sizeof(void);
+	open_file->file->size+=written_bytes;
 	return written_bytes;
 }
 
@@ -219,7 +232,23 @@ int mini_file_read(FAT_FILESYSTEM *fs, FAT_OPEN_FILE * open_file, const int size
 	int read_bytes = 0;
 
 	// TODO: read file.
-
+	perror("read beginning");
+	int sizee=open_file->file->size;
+		int fat_fd=open(open_file->file->name,O_RDWR,0777);
+	if (lseek(fat_fd,open_file->position,SEEK_SET) < 0) {
+		perror("error in lseek");
+		exit(-1);
+	}
+	if (read(fat_fd,buffer,size) < 0) {
+		perror("error in read");
+		exit(-1);
+	}
+	else{
+	printf("readbytes");
+	read_bytes+=size/sizeof(void);
+	}
+	printf("%d HERE",read_bytes);
+	close(fat_fd);
 	return read_bytes;
 }
 
