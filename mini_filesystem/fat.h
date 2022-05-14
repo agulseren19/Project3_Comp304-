@@ -16,7 +16,6 @@ typedef struct t_FAT_FILESYSTEM {
 	int block_count;
 	int block_size;
 	std::vector<unsigned char> block_map;
-
 	std::vector<FAT_FILE*> files;
 } FAT_FILESYSTEM;
 

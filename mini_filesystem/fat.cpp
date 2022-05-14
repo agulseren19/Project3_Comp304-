@@ -10,7 +10,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <fcntl.h>
-
+#include <stdlib.h>
+#include <sys/stat.h>
 /**
  * Write inside one block in the filesystem.
  * @param  fs           filesystem
@@ -24,11 +25,29 @@ int mini_fat_write_in_block(FAT_FILESYSTEM *fs, const int block_id, const int bl
 	assert(block_offset >= 0);
 	assert(block_offset < fs->block_size);
 	assert(size + block_offset <= fs->block_size);
-
 	int written = 0;
-
 	// TODO: write in the real file.
-
+	if(size>fs->block_size||size+block_offset>fs->block_size){
+	return written;
+	}
+	int fat_fd=open(fs->filename,O_RDWR,0777);
+	if(fat_fd<0){
+		perror("Cannot create virtual disk file");
+		exit(-1);
+	}
+	if (lseek(fat_fd,fs->block_size*block_id+block_offset,SEEK_SET) < 0) {
+		perror("error in lseek");
+		exit(-1);
+	}
+	if (write(fat_fd,buffer,size) < 0) {
+		perror("error in write");
+		exit(-1);
+	}
+	else{
+	written+=size;
+	}
+	
+	close(fat_fd);
 	return written;
 }
 
@@ -46,11 +65,31 @@ int mini_fat_read_in_block(FAT_FILESYSTEM *fs, const int block_id, const int blo
 	assert(block_offset < fs->block_size);
 	assert(size + block_offset <= fs->block_size);
 
-	int read = 0;
+	int readd = 0;
 
 	// TODO: read from the real file.
-
-	return read;
+	if((size>fs->block_size||size<0)&&(block_offset+size>fs->block_size)||(block_offset+size<0)){
+	return readd;
+	}
+	int fat_fd=open(fs->filename,O_RDWR,0777);
+	if(fat_fd<0){
+		perror("Cannot create virtual disk file");
+		exit(-1);
+	}
+	if (lseek(fat_fd,fs->block_size*block_id+block_offset,SEEK_SET) < 0) {
+		perror("error in lseek");
+		exit(-1);
+	}
+	if (read(fat_fd,buffer,size) < 0) {
+		perror("error in read");
+		exit(-1);
+	}
+	else{
+	readd+=size;
+	}
+	
+	close(fat_fd);
+	return readd;
 }
 
 
@@ -60,7 +99,16 @@ int mini_fat_read_in_block(FAT_FILESYSTEM *fs, const int block_id, const int blo
  */
 int mini_fat_find_empty_block(const FAT_FILESYSTEM *fat) {
 	// TODO: find an empty block in fat and return its index.
-
+	long unsigned int i;
+	perror("find");
+	if(fat!=NULL){
+	for ( i=0; i<fat->block_map.size(); i++) {
+	perror("forloop");
+		if (fat->block_map[i]==EMPTY_BLOCK) {
+		perror("if");
+			return i;}
+	}
+	}
 	return -1;
 }
 
@@ -114,7 +162,6 @@ static FAT_FILESYSTEM * mini_fat_create_internal(const char * filename, const in
 FAT_FILESYSTEM * mini_fat_create(const char * filename, const int block_size, const int block_count) {
 
 	FAT_FILESYSTEM * fat = mini_fat_create_internal(filename, block_size, block_count);
-
 	// TODO: create the corresponding virtual disk file with appropriate size.
 	//FILE * fat_fd = fopen(filename, "w+");
 	int fat_fd=open(filename,O_RDWR|O_CREAT,0777);
@@ -128,6 +175,7 @@ FAT_FILESYSTEM * mini_fat_create(const char * filename, const int block_size, co
 		printf("size cannot");
 		exit(-1);
 	}
+	
 	close(fat_fd);
 	return fat;
 }

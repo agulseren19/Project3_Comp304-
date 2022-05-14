@@ -7,7 +7,13 @@
 #include <cstring>
 #include <cstdio>
 #include <cstring>
-#include <cstdio>
+#include <unistd.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <stddef.h>
+#include <fstream>
+#include <list>
+#include <iostream>
 // Little helper to show debug messages. Set 1 to 0 to silence.
 #define DEBUG 1
 inline void debug(const char * fmt, ...) {
@@ -89,8 +95,9 @@ FAT_FILE * mini_file_create(const char * filename)
 FAT_FILE * mini_file_create_file(FAT_FILESYSTEM *fs, const char *filename)
 {
 	assert(strlen(filename)< MAX_FILENAME_LENGTH);
+	perror("minifilecreatefile");
 	FAT_FILE *fd = mini_file_create(filename);
-
+perror("minifilecreatefile");
 	int new_block_index = mini_fat_allocate_new_block(fs, FILE_ENTRY_BLOCK);
 	if (new_block_index == -1)
 	{
@@ -131,17 +138,44 @@ FAT_OPEN_FILE * mini_file_open(FAT_FILESYSTEM *fs, const char *filename, const b
 	FAT_FILE * fd = mini_file_find(fs, filename);
 	if (!fd) {
 		// TODO: check if it's write mode, and if so create it. Otherwise return NULL.
+		perror("fd");
+			if (is_write) {
+		fd=mini_file_create_file(fs,filename);
+		if(fd==NULL){
 		return NULL;
+		}
+		perror("minifileopen");
+		int fat_fd=open(filename,O_RDWR|O_CREAT,0777);
+		if(fat_fd<0){
+		perror("Cannot create file");
+		exit(-1);
+		}}
+		else{
+		return NULL;}
 	}
-
+perror("iswrite before");
 	if (is_write) {
 		// TODO: check if other write handles are open.
-		return NULL;
+		//if(fd->open_handles.back()->is_write){
+		//perror("is write");
+		//}
+		perror("iswrite beginning");
+		printf("%d",fd->open_handles.size());
+			for ( int i=0; i<fd->open_handles.size(); i++) {
+	perror("forloop iswrite");
+		if (fd->open_handles[i]->is_write) {
+		perror("iswrite true");
+				return NULL;}
 	}
-
+	}
+perror("iswrite after");
 	FAT_OPEN_FILE * open_file = new FAT_OPEN_FILE;
 	// TODO: assign open_file fields.
-
+	if(open_file!=NULL){
+	open_file->file=fd;
+	open_file->position=0;
+	open_file->is_write=is_write;
+	}
 	// Add to list of open handles for fd:
 	fd->open_handles.push_back(open_file);
 	return open_file;
@@ -199,8 +233,32 @@ int mini_file_read(FAT_FILESYSTEM *fs, FAT_OPEN_FILE * open_file, const int size
 bool mini_file_seek(FAT_FILESYSTEM *fs, FAT_OPEN_FILE * open_file, const int offset, const bool from_start)
 {
 	// TODO: seek and return true.
-
+	int size=open_file->file->size;
+	int position=open_file->position;
+	printf("size:%d",size);
+	printf("%d",open_file->position);
+		printf("%d",offset);
+	if((from_start&&(offset>size||offset<0))
+	||(from_start==false&&(position+offset>size||position+offset<0))){
 	return false;
+	}
+	perror("falsedan çıktı");
+
+	if(from_start){
+	/*if (lseek(open_file->file,offset,SEEK_SET) < 0) {
+		perror("error in lseek");
+		exit(-1);
+	}*/
+	open_file->position+=offset;
+	}
+	else{
+	/*if (lseek(open_file->file,open_file->position+offset,SEEK_SET) < 0) {
+		perror("error in lseek");
+		exit(-1);
+	}*/
+	open_file->position+=offset;
+	}
+	return true;
 }
 
 /**
@@ -212,6 +270,17 @@ bool mini_file_seek(FAT_FILESYSTEM *fs, FAT_OPEN_FILE * open_file, const int off
 bool mini_file_delete(FAT_FILESYSTEM *fs, const char *filename)
 {
 	// TODO: delete file after checks.
-
+	FAT_FILE * fd = mini_file_find(fs, filename);
+	if (!fd) {
+		fprintf(stderr, "File '%s' does not exist.\n", filename);
+		return false;
+	}
+	if(fd->open_handles.size()==0){
+	for ( int i=0; i<fd->block_ids .size(); i++) {
+		fs->block_map[fd->block_ids[i]]=EMPTY_BLOCK;
+	}
+		fs->block_map[fd->metadata_block_id]=EMPTY_BLOCK;
+	return true;}
+	
 	return false;
 }
