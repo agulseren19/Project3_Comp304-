@@ -201,9 +201,9 @@ bool mini_file_close(FAT_FILESYSTEM *fs, const FAT_OPEN_FILE * open_file)
 	if (open_file == NULL) return false;
 	FAT_FILE * fd = open_file->file;
 	if (vector_delete_value(fd->open_handles, open_file)) {
+		close(open_file->fd);
 		return true;
 	}
-	close(open_file->fd);
 	fprintf(stderr, "Attempting to close file that is not open.\n");
 	return false;
 }

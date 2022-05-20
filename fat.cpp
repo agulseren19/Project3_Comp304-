@@ -23,7 +23,7 @@
  * @param  buffer       data buffer
  * @return              written byte count
  */
-int mini_fat_write_in_block(FAT_FILESYSTEM *fs, const int block_id, const int block_offset, const int size, const void * buffer) {
+int mini_fat_write_in_block(const FAT_FILESYSTEM *fs, const int block_id, const int block_offset, const int size, const void * buffer) {
 	assert(block_offset >= 0);
 	assert(block_offset < fs->block_size);
 	assert(size + block_offset <= fs->block_size);
@@ -38,17 +38,16 @@ int mini_fat_write_in_block(FAT_FILESYSTEM *fs, const int block_id, const int bl
 		return written;
 	}
 	
-	int fat_fd=fs->fd;
 	
-	if(fat_fd<0){
+	if(fs->fd<0){
 		perror("Cannot open virtual filesystem");
 		exit(-1);
 	}
-	if (lseek(fat_fd,fs->block_size*block_id+block_offset,SEEK_SET) < 0) {
+	if (lseek(fs->fd,fs->block_size*block_id+block_offset,SEEK_SET) < 0) {
 		perror("error in lseek");
 		exit(-1);
 	}
-	if (write(fat_fd,buffer,size) < 0) {
+	if (write(fs->fd,buffer,size) < 0) {
 		perror("error in write");
 		exit(-1);
 	}
@@ -68,16 +67,37 @@ int mini_fat_write_in_block(FAT_FILESYSTEM *fs, const int block_id, const int bl
  * @param  buffer       buffer to write the read stuff to
  * @return              read byte count
  */
-int mini_fat_read_in_block(FAT_FILESYSTEM *fs, const int block_id, const int block_offset, const int size, void * buffer) {
+int mini_fat_read_in_block(const FAT_FILESYSTEM *fs, const int block_id, const int block_offset, const int size, void * buffer) {
 	assert(block_offset >= 0);
 	assert(block_offset < fs->block_size);
 	assert(size + block_offset <= fs->block_size);
 
-	int read = 0;
+	int readd = 0;
 
 	// TODO: read from the real file.
-
-	return read;
+	if((block_offset < 0) || (block_offset >= fs->block_size) || (size + block_offset > fs->block_size) ){
+	return readd;
+	}
+		if(fs ==NULL){
+		return readd;
+	}
+	if(fs->fd<0){
+		perror("Cannot create virtual disk file");
+		exit(-1);
+	}
+	if (lseek(fs->fd,fs->block_size*block_id+block_offset,SEEK_SET) < 0) {
+		perror("error in lseek");
+		exit(-1);
+	}
+	if (read(fs->fd,buffer,size) < 0) {
+		perror("error in read");
+		exit(-1);
+	}
+	else{
+	readd+=size;
+	}
+	
+	return readd;
 }
 
 
@@ -162,7 +182,6 @@ FAT_FILESYSTEM * mini_fat_create(const char * filename, const int block_size, co
 		exit(-1);
 	}
 	fat->fd=fat_fd;
-	close(fat_fd);
 	return fat;
 }
 
@@ -182,7 +201,18 @@ bool mini_fat_save(const FAT_FILESYSTEM *fat) {
 		return false;
 	}
 	// TODO: save all metadata (filesystem metadata, file metadata).
-
+	int size=sizeof(&fat->block_size);
+	mini_fat_write_in_block(fat, 0, 0, size, &fat->block_size);
+	mini_fat_write_in_block(fat, 0, size, size, &fat->block_count);
+	for ( int i=0; i<fat->block_map.size(); i++) {
+		mini_fat_write_in_block(fat, 0, (i+2)*size, size, &fat->block_map[i]);  }
+	for ( int i=0; i<fat->files.size(); i++) {
+		mini_fat_write_in_block(fat, fat->files[i]->metadata_block_id, 0, size, &fat->files[i]->name);
+		mini_fat_write_in_block(fat, fat->files[i]->metadata_block_id, size, size, &fat->files[i]->size);
+		for ( int j=0; j<fat->files[i]->block_ids.size(); j++) {
+		mini_fat_write_in_block(fat, fat->files[i]->metadata_block_id, (2+j)*size,size, &fat->files[i]->block_ids[j]);
+		}
+		   }
 	return true;
 }
 
@@ -193,10 +223,21 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
 		exit(-1);
 	}
 	// TODO: load all metadata (filesystem metadata, file metadata) and create filesystem.
-
+	//mini_fat_read_in_block(fat, 0, 0, sizeof( &fat->block_size), &obtainedsize);
 	int block_size = 1024, block_count = 10;
 	FAT_FILESYSTEM * fat = mini_fat_create_internal(filename, block_size, block_count);
-	
+		int size=sizeof(&fat_fd->block_size);
+	mini_fat_read_in_block(fat_fd, 0, 0, size, &fat->block_size);
+	mini_fat_read_in_block(fat_fd, 0, size, size, &fat->block_count);
+	for ( int i=0; i<fat_fd->block_map.size(); i++) {
+		mini_fat_read_in_block(fat_fd, 0, (i+2)*size, size, &fat->block_map[i]);  }
+	for ( int i=0; i<fat_fd->files.size(); i++) {
+		mini_fat_read_in_block(fat_fd, fat_fd->files[i]->metadata_block_id, 0, size, &fat->files[i]->name);
+		mini_fat_read_in_block(fat_fd, fat_fd->files[i]->metadata_block_id, size, size, &fat->files[i]->size);
+		for ( int j=0; j<fat_fd->files[i]->block_ids.size(); j++) {
+		mini_fat_read_in_block(fat_fd, fat_fd->files[i]->metadata_block_id, (2+j)*size,size, &fat->files[i]->block_ids[j]);
+		}
+		   }
 
 	return fat;
 }
