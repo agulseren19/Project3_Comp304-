@@ -204,6 +204,7 @@ bool mini_fat_save(const FAT_FILESYSTEM *fat) {
 	// TODO: save all metadata (filesystem metadata, file metadata).
 	int size=sizeof(&fat->block_size);
 	mini_fat_write_in_block(fat, 0, 0, size, &fat->block_size);
+
 	mini_fat_write_in_block(fat, 0, size, size, &fat->block_count);
 	for ( int i=0; i<fat->block_map.size(); i++) {
 		mini_fat_write_in_block(fat, 0, (i+2)*size, size, &fat->block_map[i]);  }
@@ -212,10 +213,6 @@ bool mini_fat_save(const FAT_FILESYSTEM *fat) {
 			mini_fat_write_in_block(fat, fat->files[i]->metadata_block_id, 0, size, &fat->files[i]->size);
 			mini_fat_write_in_block(fat, fat->files[i]->metadata_block_id, size, size, &sizebuffer);
 		mini_fat_write_in_block(fat, fat->files[i]->metadata_block_id, 2*size, sizebuffer, fat->files[i]->name);
-		printf("NAME %s \n",fat->files[i]->name);
-				printf("NAME ADDRESS %s \n",&fat->files[i]->name);
-					printf("NAME %d \n",fat->files[i]->size);
-				printf("NAME ADDRESS %d \n",&fat->files[i]->size);
 		for ( int j=0; j<fat->files[i]->block_ids.size(); j++) {
 		mini_fat_write_in_block(fat, fat->files[i]->metadata_block_id, (2+j)*size+sizebuffer,size, &fat->files[i]->block_ids[j]);
 		}
@@ -238,13 +235,12 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
 		char name[400];
 	std::vector<int> metadata_block_ids; // MetaData blocks.
 		std::vector<int> block_ids; // Data blocks.
-	mini_fat_read_in_block(fat, 0, 0, size, &fat->block_size);
-
-	mini_fat_read_in_block(fat, 0, size, size, &fat->block_count);
-
+	//mini_fat_read_in_block(fat, 0, 0, size, &fat->block_size);
+fat->block_size=block_size;
+fat->block_count=block_count;
+	//mini_fat_read_in_block(fat, 0, size, size, &fat->block_count);
 	for ( int i=0; i<block_count; i++) {
 		mini_fat_read_in_block(fat, 0, (i+2)*size, size, &fat->block_map[i]);  
-
 		if(fat->block_map[i]==FILE_ENTRY_BLOCK){
 		file_count++;
 		metadata_block_ids.push_back(i);
@@ -254,7 +250,7 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
 	for ( int i=0; i<file_count; i++) {
 			memset(name, 0, sizeof(name));
 			int sizebuffer=0;
-			mini_fat_read_in_block(fat, metadata_block_ids[i], 0, size, &sizebuffer);
+			mini_fat_read_in_block(fat, metadata_block_ids[i], size, size, &sizebuffer);
 		mini_fat_read_in_block(fat, metadata_block_ids[i], 2*size, sizebuffer, name);
 
 					FAT_FILE * fatfile=mini_file_create(name);
