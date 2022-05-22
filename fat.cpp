@@ -239,17 +239,18 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
 fat->block_size=block_size;
 fat->block_count=block_count;
 	//mini_fat_read_in_block(fat, 0, size, size, &fat->block_count);
-	for ( int i=0; i<block_count; i++) {
-		mini_fat_read_in_block(fat, 0, (i+2)*size, size, &fat->block_map[i]);  
-		if(fat->block_map[i]==FILE_ENTRY_BLOCK){
+	for ( int a=0; a<block_count; a++) {
+		mini_fat_read_in_block(fat, 0, (a+2)*size, size, &fat->block_map[a]);  
+		if(fat->block_map[a]==FILE_ENTRY_BLOCK){
 		file_count++;
-		metadata_block_ids.push_back(i);
+		metadata_block_ids.push_back(a);
 
 		}
 	}
-	for ( int i=0; i<file_count; i++) {
+	for ( int i=0; i<metadata_block_ids.size(); i++) {
 			memset(name, 0, sizeof(name));
 			int sizebuffer=0;
+
 			mini_fat_read_in_block(fat, metadata_block_ids[i], size, size, &sizebuffer);
 		mini_fat_read_in_block(fat, metadata_block_ids[i], 2*size, sizebuffer, name);
 
@@ -264,8 +265,10 @@ fat->block_count=block_count;
 							
 		mini_fat_read_in_block(fat, metadata_block_ids[i], (2+j)*size+sizebuffer,size, &blockid);
 				fat->files[i]->block_ids.push_back(blockid);
-			
+
+		
 		}
+
 		   }
 
 	return fat;

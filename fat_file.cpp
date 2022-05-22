@@ -140,7 +140,7 @@ FAT_OPEN_FILE * mini_file_open(FAT_FILESYSTEM *fs, const char *filename, const b
 	FAT_FILE * fd = mini_file_find(fs, filename);
 	FAT_OPEN_FILE * open_file = new FAT_OPEN_FILE;
 	//There is no file in the fs with filename
-	if (!fd) {
+	if (fd==NULL) {
 	// TODO: check if it's write mode, and if so create it. Otherwise return NULL.
 		if (is_write) {
 		
@@ -158,6 +158,7 @@ FAT_OPEN_FILE * mini_file_open(FAT_FILESYSTEM *fs, const char *filename, const b
 			}
 		}
 		else{ // no file and not in write mode
+		perror("openning non existing in read");
 			return NULL;
 		}
 	}else{
@@ -405,6 +406,9 @@ bool mini_file_delete(FAT_FILESYSTEM *fs, const char *filename)
 		}
 		fs->block_map[fd->metadata_block_id]=EMPTY_BLOCK;
 		//TESTED
+
+
+		vector_delete_value(fs->files, fd);
 		remove(filename);
 		return true;
 	}
