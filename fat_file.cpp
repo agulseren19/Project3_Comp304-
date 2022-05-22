@@ -86,7 +86,7 @@ FAT_FILE * mini_file_create(const char * filename)
 {
 	FAT_FILE * file = new FAT_FILE;
 	file->size = 0;
-	strcpy(file->name, filename);
+	strcpy(file->name,filename);
 	return file;
 }
 

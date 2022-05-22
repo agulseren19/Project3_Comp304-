@@ -154,6 +154,13 @@ static FAT_FILESYSTEM * mini_fat_create_internal(const char * filename, const in
 	fat->block_count = block_count;
 	fat->block_map.resize(fat->block_count, EMPTY_BLOCK); // Set all blocks to empty.
 	fat->block_map[0] = METADATA_BLOCK;
+	int fat_fd=open(filename,O_RDWR|O_CREAT,0777);
+	//if (fat_fd == NULL) {
+	if(fat_fd<0){
+		perror("Cannot create virtual disk file");
+		exit(-1);
+	}
+		fat->fd=fat_fd;
 	return fat;
 }
 
@@ -171,17 +178,11 @@ FAT_FILESYSTEM * mini_fat_create(const char * filename, const int block_size, co
 	FAT_FILESYSTEM * fat = mini_fat_create_internal(filename, block_size, block_count);
 	// TODO: create the corresponding virtual disk file with appropriate size.
 	//FILE * fat_fd = fopen(filename, "w+");
-	int fat_fd=open(filename,O_RDWR|O_CREAT,0777);
-	//if (fat_fd == NULL) {
-	if(fat_fd<0){
-		perror("Cannot create virtual disk file");
-		exit(-1);
-	}
-	if (ftruncate(fat_fd,block_size*block_count) < 0) {
+
+	if (ftruncate(fat->fd,block_size*block_count) < 0) {
 		perror("Cannot size virtual disk file");
 		exit(-1);
 	}
-	fat->fd=fat_fd;
 	return fat;
 }
 
@@ -195,11 +196,11 @@ FAT_FILESYSTEM * mini_fat_create(const char * filename, const int block_size, co
  * @return     true on success
  */
 bool mini_fat_save(const FAT_FILESYSTEM *fat) {
-	FILE * fat_fd = fopen(fat->filename, "r+");
-	if (fat_fd == NULL) {
-		perror("Cannot save fat to file");
-		return false;
-	}
+	//FILE * fat_fd = fopen(fat->filename, "r+");
+	//if (fat_fd == NULL) {
+	//	perror("Cannot save fat to file");
+	//	return false;
+	//}
 	// TODO: save all metadata (filesystem metadata, file metadata).
 	int size=sizeof(&fat->block_size);
 	mini_fat_write_in_block(fat, 0, 0, size, &fat->block_size);
@@ -207,10 +208,16 @@ bool mini_fat_save(const FAT_FILESYSTEM *fat) {
 	for ( int i=0; i<fat->block_map.size(); i++) {
 		mini_fat_write_in_block(fat, 0, (i+2)*size, size, &fat->block_map[i]);  }
 	for ( int i=0; i<fat->files.size(); i++) {
-		mini_fat_write_in_block(fat, fat->files[i]->metadata_block_id, 0, size, &fat->files[i]->name);
-		mini_fat_write_in_block(fat, fat->files[i]->metadata_block_id, size, size, &fat->files[i]->size);
+	int sizebuffer=strlen(fat->files[i]->name);
+			mini_fat_write_in_block(fat, fat->files[i]->metadata_block_id, 0, size, &fat->files[i]->size);
+			mini_fat_write_in_block(fat, fat->files[i]->metadata_block_id, size, size, &sizebuffer);
+		mini_fat_write_in_block(fat, fat->files[i]->metadata_block_id, 2*size, sizebuffer, fat->files[i]->name);
+		printf("NAME %s \n",fat->files[i]->name);
+				printf("NAME ADDRESS %s \n",&fat->files[i]->name);
+					printf("NAME %d \n",fat->files[i]->size);
+				printf("NAME ADDRESS %d \n",&fat->files[i]->size);
 		for ( int j=0; j<fat->files[i]->block_ids.size(); j++) {
-		mini_fat_write_in_block(fat, fat->files[i]->metadata_block_id, (2+j)*size,size, &fat->files[i]->block_ids[j]);
+		mini_fat_write_in_block(fat, fat->files[i]->metadata_block_id, (2+j)*size+sizebuffer,size, &fat->files[i]->block_ids[j]);
 		}
 		   }
 	return true;
@@ -226,16 +233,42 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
 	//mini_fat_read_in_block(fat, 0, 0, sizeof( &fat->block_size), &obtainedsize);
 	int block_size = 1024, block_count = 10;
 	FAT_FILESYSTEM * fat = mini_fat_create_internal(filename, block_size, block_count);
-		int size=sizeof(&fat_fd->block_size);
-	mini_fat_read_in_block(fat_fd, 0, 0, size, &fat->block_size);
-	mini_fat_read_in_block(fat_fd, 0, size, size, &fat->block_count);
-	for ( int i=0; i<fat_fd->block_map.size(); i++) {
-		mini_fat_read_in_block(fat_fd, 0, (i+2)*size, size, &fat->block_map[i]);  }
-	for ( int i=0; i<fat_fd->files.size(); i++) {
-		mini_fat_read_in_block(fat_fd, fat_fd->files[i]->metadata_block_id, 0, size, &fat->files[i]->name);
-		mini_fat_read_in_block(fat_fd, fat_fd->files[i]->metadata_block_id, size, size, &fat->files[i]->size);
-		for ( int j=0; j<fat_fd->files[i]->block_ids.size(); j++) {
-		mini_fat_read_in_block(fat_fd, fat_fd->files[i]->metadata_block_id, (2+j)*size,size, &fat->files[i]->block_ids[j]);
+		int size=8;
+		int file_count=0;
+		char name[400];
+	std::vector<int> metadata_block_ids; // MetaData blocks.
+		std::vector<int> block_ids; // Data blocks.
+	mini_fat_read_in_block(fat, 0, 0, size, &fat->block_size);
+
+	mini_fat_read_in_block(fat, 0, size, size, &fat->block_count);
+
+	for ( int i=0; i<block_count; i++) {
+		mini_fat_read_in_block(fat, 0, (i+2)*size, size, &fat->block_map[i]);  
+
+		if(fat->block_map[i]==FILE_ENTRY_BLOCK){
+		file_count++;
+		metadata_block_ids.push_back(i);
+
+		}
+	}
+	for ( int i=0; i<file_count; i++) {
+			memset(name, 0, sizeof(name));
+			int sizebuffer=0;
+			mini_fat_read_in_block(fat, metadata_block_ids[i], 0, size, &sizebuffer);
+		mini_fat_read_in_block(fat, metadata_block_ids[i], 2*size, sizebuffer, name);
+
+					FAT_FILE * fatfile=mini_file_create(name);
+					fat->files.push_back(fatfile);
+					strcpy(fat->files[i]->name,name);
+
+		mini_fat_read_in_block(fat, metadata_block_ids[i], 0, size, &fat->files[i]->size);
+		for ( int j=0; j<(fat->files[i]->size/block_size)+1; j++) {
+
+					int blockid=0;
+							
+		mini_fat_read_in_block(fat, metadata_block_ids[i], (2+j)*size+sizebuffer,size, &blockid);
+				fat->files[i]->block_ids.push_back(blockid);
+			
 		}
 		   }
 
