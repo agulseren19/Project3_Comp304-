@@ -264,7 +264,7 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
 		// size		
 		mini_fat_read_in_block(fat, metadata_block_ids[i], 0, size, &fat->files[i]->size);
 
-
+		if((fat->files[i]->size/block_size)!=0){
 		for ( int j=0; j<(fat->files[i]->size/block_size)+1; j++) {
 
 			int blockid=0;
@@ -272,7 +272,7 @@ FAT_FILESYSTEM * mini_fat_load(const char *filename) {
 			mini_fat_read_in_block(fat, metadata_block_ids[i], (2+j)*size+sizebuffer,size, &blockid);
 			fat->files[i]->block_ids.push_back(blockid);
 
-
+}
 		}
 
 	}
